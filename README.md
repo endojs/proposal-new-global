@@ -1,50 +1,74 @@
-# template-for-proposals
+# new Global
 
-A repository template for ECMAScript proposals.
+## Synopsis
 
-## Before creating a proposal
+Provide a `Global` constructor that produces a new instance of globalThis with  `Global`, `eval`, `Function` constructor, and `ModuleSource` (or equivalent) constructor such that execution contexts
+generated from the evaluators refer back to this global, and with
+ virtualized host behavior for dynamic import in script
+contexts based on the `importHook` and `importMeta` provided.
+Based on the `keys` option (that defaults to all) further fields are copied from the `globalThis` in which the `Global` constructor lives.
 
-Please ensure the following:
-  1. You have read the [process document](https://tc39.github.io/process-document/)
-  1. You have reviewed the [existing proposals](https://github.com/tc39/proposals/)
-  1. You are aware that your proposal requires being a member of TC39, or locating a TC39 delegate to “champion” your proposal
-
-## Create your proposal repo
-
-Follow these steps:
-  1. Click the green [“use this template”](https://github.com/tc39/template-for-proposals/generate) button in the repo header. (Note: Do not fork this repo in GitHub's web interface, as that will later prevent transfer into the TC39 organization)
-  1. Update ecmarkup and the biblio to the latest version: `npm install --save-dev ecmarkup@latest && npm install --save-dev --save-exact @tc39/ecma262-biblio@latest`.
-  1. Go to your repo settings page:
-      1. Under “General”, under “Features”, ensure “Issues” is checked, and disable “Wiki”, and “Projects” (unless you intend to use Projects)
-      1. Under “Pull Requests”, check “Always suggest updating pull request branches” and “automatically delete head branches”
-      1. Under the “Pages” section on the left sidebar, and set the source to “deploy from a branch”, select “gh-pages” in the branch dropdown, and then ensure that “Enforce HTTPS” is checked.
-      1. Under the “Actions” section on the left sidebar, under “General”, select “Read and write permissions” under “Workflow permissions” and click “Save”
-  1. [“How to write a good explainer”][explainer] explains how to make a good first impression.
-
-      > Each TC39 proposal should have a `README.md` file which explains the purpose
-      > of the proposal and its shape at a high level.
-      >
-      > ...
-      >
-      > The rest of this page can be used as a template ...
-
-      Your explainer can point readers to the `index.html` generated from `spec.emu`
-      via markdown like
-
-      ```markdown
-      You can browse the [ecmarkup output](https://ACCOUNT.github.io/PROJECT/)
-      or browse the [source](https://github.com/ACCOUNT/PROJECT/blob/HEAD/spec.emu).
-      ```
-
-      where *ACCOUNT* and *PROJECT* are the first two path elements in your project's Github URL.
-      For example, for github.com/**tc39**/**template-for-proposals**, *ACCOUNT* is “tc39”
-      and *PROJECT* is “template-for-proposals”.
+All options are optional.
 
 
-## Maintain your proposal repo
+## Interfaces
+```ts
+interface Global {
+  constructor({
+    keys?: string[],
+    importHook?: ImportHook,
+    importMeta?: Object,
+  })
 
-  1. Make your changes to `spec.emu` (ecmarkup uses HTML syntax, but is not HTML, so I strongly suggest not naming it “.html”)
-  1. Any commit that makes meaningful changes to the spec, should run `npm run build` to verify that the build will succeed and the output looks as expected.
-  1. Whenever you update `ecmarkup`, run `npm run build` to verify that the build will succeed and the output looks as expected.
+  Global: typeof Global,
+  Function: typeof Function,
+  eval: typeof eval,
+  ModuleSource: typeof ModuleSource,
+  
+  // and ...globalThis[...keys]
+}
+```
 
-  [explainer]: https://github.com/tc39/how-we-work/blob/HEAD/explainer.md
+```js
+new globalThis.Global({
+    keys: Reflect.ownKeys(globalThis), // default behavior equivalent
+    importHook,
+    importMeta,
+});
+```
+
+The `Global` constructor copies values for `keys` (or all entries if `keys` not specified) from the globalThis it originates from.
+
+Produces a _global_ with fresh:
+- `Global` - the same Global constructor but copying values from the new _global_
+- `Function` and `eval` - evaluators that execute code with the _global_ as the global scope and `importHook`,`importMeta` used for all imports encountered in the evaluated code
+- `ModuleSource` - (tentatively, but we need some way to execute modules with that _global_) TBD
+
+## Motivation
+
+## Design Questions
+
+### `keys` default
+
+- what about non-enumerable keys?
+- what about symbol keys?
+- what copying semantics is used? 
+  - would getters be invoked or copied?
+
+structuredClone() is not part of ECMAScript, sadly
+
+
+### Backward compatibility and the `constructor` field on a global
+
+`globalThis` already has a constructor in the browser and that constructor is `Window`, an _Illegal constructor_ as one can inform themselves by attempting to invoke it
+```js
+globalThis.constructor === Window
+const g1 = new Global()
+
+g1.globalThis.constructor === Global // would need to be true I suppose
+g1.globalThis.constructor === g1.globalThis.Global // definitely not
+g1.globalThis.constructor === g1.globalThis.Window // umm...
+g1.globalThis.Window === Global // maybe that solves it?
+```
+
+Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
