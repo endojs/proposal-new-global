@@ -44,6 +44,20 @@ Produces a _global_ with fresh:
 - `Function` and `eval` - evaluators that execute code with the _global_ as the global scope and `importHook`,`importMeta` used for all imports encountered in the evaluated code
 - `ModuleSource` - (tentatively, but we need some way to execute modules with that _global_) TBD
 
+Invariants
+```js
+globalThis.x = {};
+const thatGlobal = new globalThis.Global({
+  keys: Object.keys(globalThis)
+});
+thatGlobal.eval !== thisGlobal.eval;
+thatGlobal.Global !== thisGlobal.Global;
+thatGlobal.ModuleSource !== thisGlobal.ModuleSource;
+thatGlobal.Function !== thisGlobal.Function;
+thatGlobal.eval('Object.getPrototypeOf(async () => {})') !== Object.getPrototypeOf(async () => {});
+thatGlobal.x === thisGlobal.x;
+```
+
 ## Motivation
 
 ## Design Questions
@@ -56,6 +70,10 @@ Produces a _global_ with fresh:
   - would getters be invoked or copied?
 
 structuredClone() is not part of ECMAScript, sadly
+
+### prototype chain in the browser
+
+`globalThis` in the browser has a non-trivial prototype chain for some Window API functionality and events
 
 
 ### Backward compatibility and the `constructor` field on a global
