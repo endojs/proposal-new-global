@@ -22,6 +22,10 @@ Dynamic `import` of a `ModuleSource` within these evaluators
 instantiates that module in the new global's module map and in the lexical
 scope of the new global.
 
+This proposal does not attempt to create a new category of global object, but
+creates a mechanism for replicating the existing types such that import and
+evaluation behavior can be scoped to different instances.
+
 > This proposal picks up from the previous proposal for
 > [Evaluators](https://github.com/tc39/proposal-compartments/blob/7e60fdbce66ef2d97370007afeb807192c653333/3-evaluator.md)
 > from the [HardenedJS](https://hardenedjs.org) [`Compartment` proposal][proposal-compartments] and depends upon [proposal-import-hook][],
