@@ -23,10 +23,8 @@ instantiates that module in the new global's module map and in the lexical
 scope of the new global.
 
 > This proposal picks up from the previous proposal for
-> [Evaluators]
-> (https://github.com/tc39/proposal-compartments/blob/7e60fdbce66ef2d97370007afeb807192c653333/3-evaluator.md)
-> from the [HardenedJS](https://hardenedjs.org) [`Compartment`
-> proposal][proposal-compartment] and depends upon [proposal-import-hook][],
+> [Evaluators](https://github.com/tc39/proposal-compartments/blob/7e60fdbce66ef2d97370007afeb807192c653333/3-evaluator.md)
+> from the [HardenedJS](https://hardenedjs.org) [`Compartment` proposal][proposal-compartments] and depends upon [proposal-import-hook][],
 > [proposal-esm-phase-imports][], and [proposal-source-phase-imports][].
 
 ## Interfaces
@@ -207,4 +205,5 @@ Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
 
 [proposal-source-phase-imports]: https://github.com/tc39/proposal-source-phase-imports
 [proposal-esm-phase-imports]: https://github.com/tc39/proposal-esm-phase-imports
+[proposal-compartments]: https://github.com/tc39/proposal-compartments
 [proposal-import-hook]: https://github.com/endojs/proposal-import-hook
