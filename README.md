@@ -1,5 +1,13 @@
 # new Global
 
+Stage: To be presented for advancement to stage 1 at a future TC-39 plenary.
+
+Champions:
+- Zbyszek Tenerowicz (ZB), Consensys, @naugtur 
+- Kris Kowal (KKL),  Agoric, @kriskowal
+- Richard Gibson (RGN), Agoric @gibson042 
+- Mark S. Miller (MM), Agoric @erights 
+
 ## Synopsis
 
 Provide a `Global` constructor that produces a new instance of globalThis with  `Global`, `eval`, `Function` constructor, and `ModuleSource` (or equivalent) constructor such that execution contexts
