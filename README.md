@@ -6,8 +6,8 @@ Champions:
 
 - Zbyszek Tenerowicz (ZTZ), Consensys, @naugtur
 - Kris Kowal (KKL), Agoric, @kriskowal
-- Richard Gibson (RGN), Agoric @gibson042
-- Mark S. Miller (MM), Agoric @erights
+- Richard Gibson (RGN), Agoric, @gibson042
+- Mark S. Miller (MM), Agoric, @erights
 
 ## Synopsis
 
@@ -129,14 +129,7 @@ New `Global` provide an alternate solution: evaluate modules or scripts in a
 separate global scope with shared intrinsics.
 
 ```js
-const dslGlobal = const new Global({
-  globalThis: {
-    __proto__: globalThis,
-    describe,
-    before,
-    after,
-  }
-});
+const dslGlobal = const new Global();
 dslGlobal.describe = () => {}
 dslGlobal.before = () => {}
 dslGlobal.after = () => {};
