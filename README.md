@@ -88,6 +88,7 @@ thatGlobal.Function !== thisGlobal.Function;
 thatGlobal.eval('Object.getPrototypeOf(async () => {})') !== Object.getPrototypeOf(async () => {});
 thatGlobal.eval('Object.getPrototypeOf(function *() {})') !== Object.getPrototypeOf(function *() {});
 thatGlobal.eval('Object.getPrototypeOf(async function *() {})') !== Object.getPrototypeOf(async function *() {});
+const source = new ModuleSource('export default {}');
 (await thatGlobal.eval('(...args) => import(...args)')(source)) !== (await import(source));
 thatGlobal.ModuleSource === thisGlobal.ModuleSource;
 thatGlobal.x === thisGlobal.x;
