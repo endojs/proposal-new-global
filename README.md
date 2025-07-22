@@ -181,6 +181,11 @@ With `Global` constructor comes the ability to isolate fragments of the applicat
 AI generated sources from independently working agents can come with colliding names for global variables to use and may need separate global scopes to collaborate or coexist. Similarly a misguided attempt at an inline polyfill by an AI or a package author could be prevented by freezing the contents of a new global in which the unreliable code subsequently runs.
 Using a new global instead of a new Realm avoids the issues like identity discontinuity impeding the composition of software where function calls need to happen across the isolated and non-isolated code.
 
+The isolation use case depends also on the interaction with `importHook` and `ModuleSource` as described in 
+
+https://github.com/endojs/proposal-import-hook/?tab=readme-ov-file#new-global
+
+
 ### Incremental or in-context execution
 
 There are tools that currently use much more complex and costly mechanisms (similar to the ones described in [Domain Specific Languages](#domain-specific-languages) among other) to provide the ability to execute fragments of JavaScript code in a very specific context of the tool.
