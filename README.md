@@ -3,10 +3,11 @@
 Stage: To be presented for advancement to stage 1 at a future TC-39 plenary.
 
 Champions:
-- Zbyszek Tenerowicz (ZB), Consensys, @naugtur 
-- Kris Kowal (KKL),  Agoric, @kriskowal
-- Richard Gibson (RGN), Agoric @gibson042 
-- Mark S. Miller (MM), Agoric @erights 
+
+- Zbyszek Tenerowicz (ZTZ), Consensys, @naugtur
+- Kris Kowal (KKL), Agoric, @kriskowal
+- Richard Gibson (RGN), Agoric, @gibson042
+- Mark S. Miller (MM), Agoric, @erights
 
 ## Synopsis
 
@@ -44,16 +45,16 @@ interface Global {
   Global: typeof Global,
   Function: typeof Function,
   eval: typeof eval,
-  
+
   // and ...globalThis[...keys]
 }
 ```
 
 ```js
 new globalThis.Global({
-    keys: Reflect.ownKeys(globalThis), // default behavior equivalent
-    importHook,
-    importMeta,
+  keys: Reflect.ownKeys(globalThis),
+  importHook,
+  importMeta,
 });
 ```
 
@@ -71,7 +72,7 @@ Produces a _global_ with fresh:
   in the evaluated code
 - All other function constructors, which can be accessed through `eval` and
   their corresponding, undeniable syntax, like `global.eval('async () =>
-  {}').constructor`.
+{}').constructor`.
 
 The global does not require a fresh `ModuleSource` because
 the source is paired with the global by use of dynamic `import` in global evaluation,
@@ -87,12 +88,17 @@ const thatGlobal = new globalThis.Global({
 thatGlobal.eval !== thisGlobal.eval;
 thatGlobal.Global !== thisGlobal.Global;
 thatGlobal.Function !== thisGlobal.Function;
-thatGlobal.eval('Object.getPrototypeOf(async () => {})') !== Object.getPrototypeOf(async () => {});
-thatGlobal.eval('Object.getPrototypeOf(function *() {})') !== Object.getPrototypeOf(function *() {});
-thatGlobal.eval('Object.getPrototypeOf(async function *() {})') !== Object.getPrototypeOf(async function *() {});
-const source = new ModuleSource('export default {}');
-(await thatGlobal.eval('(...args) => import(...args)')(source)) !== (await import(source));
+thatGlobal.eval("Object.getPrototypeOf(async () => {})") !==
+  Object.getPrototypeOf(async () => {});
+thatGlobal.eval("Object.getPrototypeOf(function *() {})") !==
+  Object.getPrototypeOf(function* () {});
+thatGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
+  Object.getPrototypeOf(async function* () {});
+const source = new ModuleSource("export default {}");
+(await thatGlobal.eval("(...args) => import(...args)")(source)) !==
+  (await import(source));
 thatGlobal.ModuleSource === thisGlobal.ModuleSource;
+thatGlobal.Array === thisGlobal.Array;
 thatGlobal.x === thisGlobal.x;
 ```
 
@@ -117,20 +123,13 @@ which leaks for the cases of syntactically undeniable Realm-specific intrinsics
 like the `AsyncFunction` constructor and prototype, and requires the
 implementer to be vigilant to the extent that they graft every intrinsic from
 one realm to another.
-We have found such arrangements to be fragile and leaky.
+We have found such arrangements to be fragile and leaky. Also costly in memory efficiency and developer time.
 
 New `Global` provide an alternate solution: evaluate modules or scripts in a
 separate global scope with shared intrinsics.
 
 ```js
-const dslGlobal = const new Global({
-  globalThis: {
-    __proto__: globalThis,
-    describe,
-    before,
-    after,
-  }
-});
+const dslGlobal = const new Global();
 dslGlobal.describe = () => {}
 dslGlobal.before = () => {}
 dslGlobal.after = () => {};
@@ -141,7 +140,7 @@ await dslGlobal.eval('s => import(s)')(source);
 
 In this example, only the entrypoint module for the DSL sees additional
 globals.
-The `source` adopts the import hook associatd with `dslGlobal` by
+The `source` adopts the import hook associated with `dslGlobal` by
 virtue of using the `dslGlobal`'s dynamic `import`.
 Current DSLs cannot execute concurrently or depend on dynamic scope to track
 the entrypoint that called each DSL verb.
@@ -172,6 +171,29 @@ TC53][tc53], do not have an origin on which to build a same-origin-policy, and
 have elected to build their security model on isolated evaluators, through the
 high-level Compartment interface.
 
+### Isolating unreliable code
+
+The way modern software is composed has already undermined the validity of the assumption that every author participating has their intentions well aligned for the benefit of the software working correctly. A whole new level of unreliability is now added with the popularity of _coding agents_ and _vibe coding_ where creating syntactically valid but effectively unpredictable JavaScript and integrating it into existing software to check whether it seems to implement the desired functionality is becoming a popular way of building software.
+
+It is not an entirely new concern, as test runners have been concerned with isolating test cases to avoid them relying on global side-effects of other test cases. It is now a concern for a much wider audience with more at stake.
+
+With `Global` constructor comes the ability to isolate fragments of the application in a way that unreliable code cannot rely on shared global state without the maintainer of the software knowing about it.
+AI generated sources from independently working agents can come with colliding names for global variables to use and may need separate global scopes to collaborate or coexist. Similarly a misguided attempt at an inline polyfill by an AI or a package author could be prevented by freezing the contents of a new global in which the unreliable code subsequently runs.
+Using a new global instead of a new Realm avoids the issues like identity discontinuity impeding the composition of software where function calls need to happen across the isolated and non-isolated code.
+
+The isolation use case depends also on the interaction with `importHook` and `ModuleSource` as described in 
+
+https://github.com/endojs/proposal-import-hook/?tab=readme-ov-file#new-global
+
+
+### Incremental or in-context execution
+
+There are tools that currently use much more complex and costly mechanisms (similar to the ones described in [Domain Specific Languages](#domain-specific-languages) among other) to provide the ability to execute fragments of JavaScript code in a very specific context of the tool.
+
+That includes REPLs, inline code execution results in editors (eg. [Quokka.js](https://quokkajs.com/)) and various use cases of IDEs in the browser.
+
+Maintaining the global state between executions of user-provided code snippets would benefit from a `Global` constructor.
+
 ## Intersection Semantics
 
 ### Shared Structs
@@ -184,7 +206,7 @@ share any undeniable mutable state.
 
 ## Design Questions
 
-### prototype chain in the browser
+### Prototype chain in the browser
 
 `globalThis` in the browser has a non-trivial prototype chain for some Window
 API functionality and events.
@@ -196,13 +218,13 @@ API functionality and events.
 to invoke it.
 
 ```js
-globalThis.constructor === Window
-const g1 = new Global()
+globalThis.constructor === Window;
+const g1 = new Global();
 
-g1.globalThis.constructor === Global // would need to be true I suppose
-g1.globalThis.constructor === g1.globalThis.Global // definitely not
-g1.globalThis.constructor === g1.globalThis.Window // umm...
-g1.globalThis.Window === Global // maybe that solves it?
+g1.globalThis.constructor === Global; // would need to be true I suppose
+g1.globalThis.constructor === g1.globalThis.Global; // definitely not
+g1.globalThis.constructor === g1.globalThis.Window; // umm...
+g1.globalThis.Window === Global; // maybe that solves it?
 ```
 
 Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
