@@ -43,19 +43,49 @@ interface Global {
   })
 
   Global: typeof Global,
-  Function: typeof Function,
   eval: typeof eval,
+  Function: typeof Function,
+  AsyncFunction: typeof AsyncFunction,
+  GeneratorFunction: typeof GeneratorFunction,
+  AsyncGeneratorFunction: typeof AsyncGeneratorFunction,
 
-  // and ...globalThis[...keys]
+  // ... and properties copied from globalThis filtered by keys
 }
 ```
 
+<details>
+  <summary>proper typescript definition</summary>
+  
+```ts
+interface Global<K extends keyof typeof globalThis = never> extends Pick<typeof globalThis, K> {
+  constructor({
+    keys?: K[],
+    importHook?: ImportHook,
+    importMeta?: Object,
+  })
+
+Global: typeof Global,
+eval: typeof eval,
+Function: typeof Function,
+AsyncFunction: typeof AsyncFunction,
+GeneratorFunction: typeof GeneratorFunction,
+AsyncGeneratorFunction: typeof AsyncGeneratorFunction,
+}
+
+````
+
+</details>
+
+_Example_
+
 ```js
-new globalThis.Global({
-  keys: Reflect.ownKeys(globalThis),
+const thatGlobal = new globalThis.Global({
+  keys: ['Buffer'],
   importHook,
   importMeta,
 });
+
+thatGlobal.process = { env: process.env }
 ```
 
 The `Global` constructor copies properties for `keys` (or all properties if
@@ -233,3 +263,4 @@ Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
 [proposal-esm-phase-imports]: https://github.com/tc39/proposal-esm-phase-imports
 [proposal-compartments]: https://github.com/tc39/proposal-compartments
 [proposal-import-hook]: https://github.com/endojs/proposal-import-hook
+````
