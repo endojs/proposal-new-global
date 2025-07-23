@@ -49,15 +49,15 @@ interface Global {
   constructor({
     keys?: string[],
     importHook?: ImportHook,
-    importMeta?: Object,
+    importMetaHook?: ImportMetaHook,
   })
-
+  // Unique to the new global:
   Global: typeof Global,
   eval: typeof eval,
   Function: typeof Function,
-  // and all permutations of Async and Generator
+  // internal slots for *Function as well
 
-  // and properties copied from globalThis filtered by keys
+  // + properties copied from globalThis filtered by keys
 }
 ```
 ---
@@ -81,34 +81,111 @@ interface Global {
 
 - allows mutating `(new Global()).globalThis` before evaluation
 - by default copy all properties from `globalThis`
-- properties: `Global` and all evaluators have their internal slots relating them to the new _global_
+- properties: `Global` and all evaluators have their internal slots relating them to the new _global_, that includes all `*Function` slots.
 
-
+```js
+(async () => {}).constructor !==
+new Global().eval('async () => {}').constructor
+```
 
 ---
 
-### Details - invariants
+
+#### Details - All properties grafted by default
+
 ```js
 globalThis.x = {};
-const thatGlobal = new globalThis.Global({
-  keys: Object.keys(globalThis),
-});
-thatGlobal.eval !== thisGlobal.eval;
-thatGlobal.Global !== thisGlobal.Global;
-thatGlobal.Function !== thisGlobal.Function;
-thatGlobal.eval("Object.getPrototypeOf(async () => {})") !==
-  Object.getPrototypeOf(async () => {});
-thatGlobal.eval("Object.getPrototypeOf(function *() {})") !==
-  Object.getPrototypeOf(function* () {});
-thatGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
-  Object.getPrototypeOf(async function* () {});
-const source = new ModuleSource("export default {}");
-(await thatGlobal.eval("(...args) => import(...args)")(source)) !==
-  (await import(source));
-thatGlobal.ModuleSource === thisGlobal.ModuleSource;
-thatGlobal.Array === thisGlobal.Array;
-thatGlobal.x === thisGlobal.x;
+const newGlobal = new globalThis.Global();
+newGlobal.Object === globalThis.Object;
+newGlobal.x === globalThis.x;
 ```
+
+#### Details - Properties can be selectively grafted
+
+```js
+globalThis.x = {};
+globalThis.y = {};
+const newGlobal = new Global({
+  keys: ['y'],
+});
+newGlobal.x === undefined;
+newGlobal.y === globalThis.y
+```
+
+#### Details - Some properties undeniable
+
+```js
+const newGlobal = new Global({
+  keys: []
+});
+newGlobal.Object === globalThis.Object;
+```
+
+#### Details - Own unique evaluators
+
+```js
+const newGlobal = new Global();
+newGlobal.eval !== thisGlobal.eval;
+newGlobal.Global !== thisGlobal.Global;
+newGlobal.Function !== thisGlobal.Function;
+```
+
+#### Details - Other unique intrinsic evaluators
+
+```js
+const newGlobal = new Global();
+newGlobal.eval("Object.getPrototypeOf(async () => {})") !==
+  Object.getPrototypeOf(async () => {});
+newGlobal.eval("Object.getPrototypeOf(function *() {})") !==
+  Object.getPrototypeOf(function* () {});
+newGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
+  Object.getPrototypeOf(async function* () {});
+```
+
+#### Details - Inherits host import hook and module map by default
+
+```js
+const newGlobal = new Global();
+const fs1 = await import("node:fs");
+const fs2 = await newGlobal.eval('import("node:fs")');
+fs1 === fs2; // if present
+```
+
+#### Details - Can override import hook
+
+```js
+const newGlobal = new Global({
+  async importHook(specifier) {
+    if (specifier === 'node:fs') {
+      return import.source('mock-fs.js');
+    } else {
+      return import.source(specifier);
+    }
+  }
+});
+const fs = await newGlobal.eval('import("node:fs"))');
+```
+
+
+#### Details - Closed holes
+
+```js
+const fs = await (0, eval)('import("node:fs")');
+```
+
+```js
+const AsyncFunction = (async () => {}).constructor;
+const fs = await new AsyncFunction('return import("node:fs"))');
+```
+
+```js
+const fs = await import(new ModuleSource(`
+  export default new Function('return import("node:fs")')();
+`));
+```
+
+Closing every escape gadget requires rigor — but is possible!
+
 ---
 
 ### Overlap with Module Harmony
