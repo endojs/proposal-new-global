@@ -270,4 +270,4 @@ Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
 [proposal-esm-phase-imports]: https://github.com/tc39/proposal-esm-phase-imports
 [proposal-compartments]: https://github.com/tc39/proposal-compartments
 [proposal-import-hook]: https://github.com/endojs/proposal-import-hook
-````
+
