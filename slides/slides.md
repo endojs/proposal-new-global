@@ -63,6 +63,8 @@ interface Global {
 ---
 ### Conceptual changes
 
+<style scoped>section{font-size:30px;}</style>
+
 - latest incarnation of the `Evaluators` proposal, from `Compartments` (Stage 1)
 - avoids adding new concept of `Evaluators`, reuses existing `Global` concept.
 - no new categories of global object, just replicas
@@ -90,7 +92,6 @@ new Global().eval('async () => {}').constructor
 
 ---
 
-
 #### Details - All properties grafted by default
 
 ```js
@@ -99,6 +100,8 @@ const newGlobal = new globalThis.Global();
 newGlobal.Object === globalThis.Object;
 newGlobal.x === globalThis.x;
 ```
+
+---
 
 #### Details - Properties can be selectively grafted
 
@@ -112,6 +115,8 @@ newGlobal.x === undefined;
 newGlobal.y === globalThis.y
 ```
 
+---
+
 #### Details - Some properties undeniable
 
 ```js
@@ -121,6 +126,8 @@ const newGlobal = new Global({
 newGlobal.Object === globalThis.Object;
 ```
 
+---
+
 #### Details - Own unique evaluators
 
 ```js
@@ -129,6 +136,8 @@ newGlobal.eval !== thisGlobal.eval;
 newGlobal.Global !== thisGlobal.Global;
 newGlobal.Function !== thisGlobal.Function;
 ```
+
+---
 
 #### Details - Other unique intrinsic evaluators
 
@@ -142,6 +151,8 @@ newGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
   Object.getPrototypeOf(async function* () {});
 ```
 
+---
+
 #### Details - Inherits host import hook and module map by default
 
 ```js
@@ -150,6 +161,8 @@ const fs1 = await import("node:fs");
 const fs2 = await newGlobal.eval('import("node:fs")');
 fs1 === fs2; // if present
 ```
+
+---
 
 #### Details - Can override import hook
 
@@ -166,6 +179,8 @@ const newGlobal = new Global({
 const fs = await newGlobal.eval('import("node:fs"))');
 ```
 
+
+---
 
 #### Details - Closed holes
 
