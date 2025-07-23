@@ -63,8 +63,9 @@ interface Global {
 ---
 ### Conceptual changes
 
-- replaces the `Evaluators` proposal
-- avoids adding new entities
+- latest incarnation of the `Evaluators` proposal, from `Compartments` (Stage 1)
+- avoids adding new concept of `Evaluators`, reuses existing `Global` concept.
+- no new categories of global object, just replicas
 - host creates the global object
 - not opinionated on minimal set of globals
 
