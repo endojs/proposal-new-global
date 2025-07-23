@@ -39,23 +39,49 @@ interface Global {
   constructor({
     keys?: string[],
     importHook?: ImportHook,
-    importMeta?: Object,
+    importMetaHook?: ImportMetaHook,
   })
 
   Global: typeof Global,
-  Function: typeof Function,
   eval: typeof eval,
+  Function: typeof Function,
+  // Consequently, internal slots for 
+  // AsyncFunction , GeneratorFunction,   AsyncGeneratorFunction 
 
-  // and ...globalThis[...keys]
+  // ... and properties copied from globalThis filtered by keys
 }
 ```
 
+<details>
+  <summary>proper typescript definition</summary>
+  
+```ts
+interface Global<K extends keyof typeof globalThis = never> extends Pick<typeof globalThis, K> {
+  constructor({
+    keys?: K[],
+    importHook?: ImportHook,
+    importMetaHook?: ImportMetaHook,
+  })
+
+Global: typeof Global,
+eval: typeof eval,
+Function: typeof Function
+}
+
+````
+
+</details>
+
+_Example_
+
 ```js
-new globalThis.Global({
-  keys: Reflect.ownKeys(globalThis),
+const newGlobal = new globalThis.Global({
+  keys: ['Buffer'],
   importHook,
-  importMeta,
+  importMetaHook,
 });
+
+newGlobal.process = { env: process.env }
 ```
 
 The `Global` constructor copies properties for `keys` (or all properties if
@@ -68,7 +94,7 @@ Produces a _global_ with fresh:
   purposes of duplicating internal slots, the property descriptors of copied
   `keys`, and its `importHook`.
 - `Function` and `eval` - evaluators that execute code with the _global_ as the
-  global scope and `importHook`,`importMeta` used for all imports encountered
+  global scope and `importHook`,`importMetaHook` used for all imports encountered
   in the evaluated code
 - All other function constructors, which can be accessed through `eval` and
   their corresponding, undeniable syntax, like `global.eval('async () =>
@@ -82,24 +108,24 @@ Invariants:
 
 ```js
 globalThis.x = {};
-const thatGlobal = new globalThis.Global({
+const newGlobal = new globalThis.Global({
   keys: Object.keys(globalThis),
 });
-thatGlobal.eval !== thisGlobal.eval;
-thatGlobal.Global !== thisGlobal.Global;
-thatGlobal.Function !== thisGlobal.Function;
-thatGlobal.eval("Object.getPrototypeOf(async () => {})") !==
+newGlobal.eval !== thisGlobal.eval;
+newGlobal.Global !== thisGlobal.Global;
+newGlobal.Function !== thisGlobal.Function;
+newGlobal.eval("Object.getPrototypeOf(async () => {})") !==
   Object.getPrototypeOf(async () => {});
-thatGlobal.eval("Object.getPrototypeOf(function *() {})") !==
+newGlobal.eval("Object.getPrototypeOf(function *() {})") !==
   Object.getPrototypeOf(function* () {});
-thatGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
+newGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
   Object.getPrototypeOf(async function* () {});
 const source = new ModuleSource("export default {}");
-(await thatGlobal.eval("(...args) => import(...args)")(source)) !==
+(await newGlobal.eval("(...args) => import(...args)")(source)) !==
   (await import(source));
-thatGlobal.ModuleSource === thisGlobal.ModuleSource;
-thatGlobal.Array === thisGlobal.Array;
-thatGlobal.x === thisGlobal.x;
+newGlobal.ModuleSource === thisGlobal.ModuleSource;
+newGlobal.Array === thisGlobal.Array;
+newGlobal.x === thisGlobal.x;
 ```
 
 ## Motivation
@@ -204,6 +230,17 @@ within that global would produce its own shared struct prototypes.
 This gives platforms a place to stand to ensure that separate globals do not
 share any undeniable mutable state.
 
+### Import Hook
+
+The interaction between importHook and Global is described in the importHook proposal
+https://github.com/endojs/proposal-import-hook/?tab=readme-ov-file#new-global
+
+### Get Intrinsic
+
+see https://github.com/tc39/proposal-get-intrinsic
+
+A `new Global` object would need to be the source for `Reflect.getIntrinsic` to get the correct evaluators (including `%AsyncFunction%` etc.) from the internal slots and preserve the limited scope of the _global_ if `keys` were set.
+
 ## Design Questions
 
 ### Prototype chain in the browser
@@ -233,3 +270,4 @@ Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
 [proposal-esm-phase-imports]: https://github.com/tc39/proposal-esm-phase-imports
 [proposal-compartments]: https://github.com/tc39/proposal-compartments
 [proposal-import-hook]: https://github.com/endojs/proposal-import-hook
+````
