@@ -1,9 +1,8 @@
 ---
 marp: true
 theme: gaia
-_class: lead
+class: lead invert
 paginate: true
-backgroundColor: #fff
 ---
 
 # <del>Evaluators</del> new Global
