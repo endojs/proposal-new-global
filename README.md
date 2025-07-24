@@ -197,7 +197,7 @@ TC53][tc53], do not have an origin on which to build a same-origin-policy, and
 have elected to build their security model on isolated evaluators, through the
 high-level Compartment interface.
 
-### Isolating unreliable code
+### Isolating/encapsulating unreliable code
 
 The way modern software is composed has already undermined the validity of the assumption that every author participating has their intentions well aligned for the benefit of the software working correctly. A whole new level of unreliability is now added with the popularity of _coding agents_ and _vibe coding_ where creating syntactically valid but effectively unpredictable JavaScript and integrating it into existing software to check whether it seems to implement the desired functionality is becoming a popular way of building software.
 
@@ -247,6 +247,37 @@ A `new Global` object would need to be the source for `Reflect.getIntrinsic` to 
 
 `globalThis` in the browser has a non-trivial prototype chain for some Window
 API functionality and events.
+
+```js
+let pro = globalThis; 
+while (pro = Object.getPrototypeOf(pro)) { 
+  console.log(pro.toString())
+}
+```
+```
+// browsers
+[object Window]
+[object WindowProperties]
+[object EventTarget]
+[object Object]
+```
+```
+// Node.js
+[object Object]
+[object Object]
+```
+```
+// Deno
+[object Window]
+[object EventTarget]
+[object Object]
+```
+```
+// Hermes
+[object Object]
+undefined
+```
+
 
 ### Backward compatibility and the `constructor` field on a global
 
