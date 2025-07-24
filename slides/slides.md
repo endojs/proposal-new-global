@@ -7,12 +7,10 @@ paginate: true
 
 # new Global
 
-
 #### status update & feedback request
 
 _Zbyszek Tenerowicz (ZTZ) @naugtur.pl_
 _Kris Kowal (KKL) @kriskowal_
-
 
 ---
 
@@ -24,13 +22,14 @@ Minimal addition to the spec sufficient for implementing various ideas around li
 
 ## Differences with other approaches
 
-_Compared to Shadow Realm or exposing an Isolate constructor_
+_Compared to Shadow Realm or exposing an Isolate factory_
 
-- attempts no intersection with web standards
+<!-- - not introducing a new category of a global object, but allowing replicating the existing one -->
+
+- minimize intersection with the web standards
 - enables isolation that doesn't undermine synchronous communication and shared prototypes
 - avoids adding new concepts, reuses existing `Global` concept, allows replicas.
-- while use cases may seem similar, this proposal being same-realm and avoiding duplicating large objects should allow more granular isolation/encapsulation 
-
+- while use cases may seem similar, this proposal being same-realm and avoiding duplicating large objects should allow more granular isolation/encapsulation
 
 ---
 
@@ -60,7 +59,7 @@ await dslGlobal.eval('s => import(s)')(source);
 dslGlobal.document = mockDomApi;
 ```
 
-currently, Node.js `vm` module is often used
+Currently, Node.js `vm` module is used by some test runners (otherwise) all code including dependencies can define tests)
 
 ---
 
@@ -69,7 +68,7 @@ currently, Node.js `vm` module is often used
 - AI agents generating code are here to stay
 - Actors producing code in an application not aligned on intentions
 
-`new Global` + freezing intrinsics OR `getIntrinsic` 
+`new Global` + freezing intrinsics
 
 - Encapsulate AI code to avoid it coming up with matching globals elsewhere or producing misguided attempts at polyfills inline
 - Doesn't need to be security-grade isolation to contain impact of faulty code
@@ -81,7 +80,7 @@ currently, Node.js `vm` module is often used
 
 ![](bubbles.svg)
 
-<!-- 
+<!--
 ```mermaid
 graph LR
 poly((intentional<br>polyfills))
@@ -95,7 +94,7 @@ app <-.-> deps
 app <-.-> ai1 <-.-> deps
 app<-.->ai2<-.->deps
 ai2<-.->ai1
-``` 
+```
 -->
 
 ---
@@ -121,13 +120,15 @@ interface Global {
   // Unique to the new global:
   Global: typeof Global,
   eval: typeof eval,
-  Function: typeof Function,
+  Function: typeof Function, // with shared Function.prototype
   // internal slots for *Function as well
 
   // + properties copied from globalThis filtered by keys
 }
 ```
+
 ---
+
 ### Properties
 
 <style scoped>section{font-size:30px;}</style>
@@ -144,6 +145,13 @@ interface Global {
 > It also eliminates the concern where evaluators accepting any globalThis to use would clash with the host implementation's desire to use special objects only the host can create.
 > No API to set a custom reference as global context for evaluators if it's not created via `new Global`
 > When a new global is created it inherits all properties from parent global unless user specifies a list. Spec offers no opinions on minimal global, only demands that all evaluators are present.
+
+---
+
+#### We believe all further slides are post Stage 1 concerns
+
+We are bringing up the details for feedback
+
 ---
 
 ### Details
@@ -153,8 +161,23 @@ interface Global {
 - properties: `Global` and all evaluators have their internal slots relating them to the new _global_, that includes all `*Function` slots.
 
 ```js
-(async () => {}).constructor !==
-new Global().eval('async () => {}').constructor
+Reflect.getIntrinsic("%AsyncFunction%") !==
+  new Global().Reflect.getIntrinsic("%AsyncFunction%");
+
+(async () => {}).constructor ===
+  new Global().eval("async () => {}").constructor;
+```
+
+---
+
+### Details - prototype
+
+- By default the new global would get the same prototype as parent
+- The [[Prototype]] **MUST** be setable
+
+```js
+const newGlobal = new Global();
+Object.setPrototypeOf(newGlobal, Object.prototype);
 ```
 
 ---
@@ -176,21 +199,11 @@ newGlobal.x === globalThis.x;
 globalThis.x = {};
 globalThis.y = {};
 const newGlobal = new Global({
-  keys: ['y'],
+  keys: ["y"],
 });
 newGlobal.x === undefined;
-newGlobal.y === globalThis.y
-```
-
----
-
-#### Details - Some properties undeniable
-
-```js
-const newGlobal = new Global({
-  keys: []
-});
-newGlobal.Object === globalThis.Object;
+newGlobal.y === globalThis.y;
+newGlobal.Object === undefined;
 ```
 
 ---
@@ -202,25 +215,28 @@ const newGlobal = new Global();
 newGlobal.eval !== thisGlobal.eval;
 newGlobal.Global !== thisGlobal.Global;
 newGlobal.Function !== thisGlobal.Function;
+newGlobal.Function.prototype === thisGlobal.Function.prototype;
 ```
 
 ---
 
-#### Details - Other unique intrinsic evaluators
+#### Details - Other unique intrinsic evaluators also share prototype
 
 ```js
 const newGlobal = new Global();
-newGlobal.eval("Object.getPrototypeOf(async () => {})") !==
+newGlobal.eval("Object.getPrototypeOf(async () => {})") ===
   Object.getPrototypeOf(async () => {});
-newGlobal.eval("Object.getPrototypeOf(function *() {})") !==
+newGlobal.eval("Object.getPrototypeOf(function *() {})") ===
   Object.getPrototypeOf(function* () {});
-newGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
+newGlobal.eval("Object.getPrototypeOf(async function *() {})") ===
   Object.getPrototypeOf(async function* () {});
 ```
 
+> As far as we can tell, nobody is using these unnamed constructors to construct functions
+
 ---
 
-#### Details - Inherits host import hook and module map by default
+#### Details - Inherits host import hook and module map
 
 ```js
 const newGlobal = new Global();
@@ -231,46 +247,37 @@ fs1 === fs2; // if present
 
 ---
 
-#### Details - Can override import hook
+### Intersection semantics with Content Security Policy
+
+They have been resolved by ESM source phase imports proposal with `ModuleSource`.
+
+<!-- TODO: reveal dynamic import making ModuleSource usable within a new Global without `unsafe-eval`, preferably by global.import -->
+
+---
+
+### new Global and Module Harmony ✨
+
+---
+
+
+#### Import hook in Global
 
 ```js
 const newGlobal = new Global({
   async importHook(specifier) {
     if (specifier === 'node:fs') {
+      // eval twin of mock-fs
       return import.source('mock-fs.js');
     } else {
-      return import.source(specifier);
+      // sharing one instance
+      return import(specifier);
     }
   }
 });
 const fs = await newGlobal.eval('import("node:fs"))');
 ```
 
-
 ---
-
-#### Details - Closed holes
-
-```js
-const fs = await (0, eval)('import("node:fs")');
-```
-
-```js
-const AsyncFunction = (async () => {}).constructor;
-const fs = await new AsyncFunction('return import("node:fs"))');
-```
-
-```js
-const fs = await import(new ModuleSource(`
-  export default new Function('return import("node:fs")')();
-`));
-```
-
-Closing every escape gadget requires rigor — but is possible!
-
----
-
-### Overlap with Module Harmony
 
 ```js
 const globalThat = new Global({

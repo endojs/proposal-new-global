@@ -241,6 +241,8 @@ see https://github.com/tc39/proposal-get-intrinsic
 
 A `new Global` object would need to be the source for `Reflect.getIntrinsic` to get the correct evaluators (including `%AsyncFunction%` etc.) from the internal slots and preserve the limited scope of the _global_ if `keys` were set.
 
+`Reflect` would need to be unique own property of a new _global_
+
 ## Design Questions
 
 ### Prototype chain in the browser
