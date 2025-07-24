@@ -24,9 +24,13 @@ Minimal addition to the spec sufficient for implementing various ideas around li
 
 ## Differences with other approaches
 
+_Compared to Shadow Realm or exposing an Isolate constructor_
+
 - attempts no intersection with web standards
 - enables isolation that doesn't undermine synchronous communication and shared prototypes
-- avoids adding new concepts, reuses existing `Global` concept.
+- avoids adding new concepts, reuses existing `Global` concept, allows replicas.
+- while use cases may seem similar, this proposal being same-realm and avoiding duplicating large objects should allow more granular isolation/encapsulation 
+
 
 ---
 

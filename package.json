@@ -6,7 +6,7 @@
     "start": "npm run build-loose -- --watch",
     "build": "npm run build-loose -- --strict",
     "build-loose": "node -e 'fs.mkdirSync(\"build\", { recursive: true })' && ecmarkup --load-biblio @tc39/ecma262-biblio --verbose spec.emu build/index.html --lint-spec",
-    "slides": "npx @marp-team/marp-cli slides/slides.md --pdf"
+    "slides": "npx @marp-team/marp-cli slides/slides.md --allow-local-files --pdf"
   },
   "homepage": "https://github.com/tc39/template-for-proposals#readme",
   "repository": {
