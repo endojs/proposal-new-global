@@ -267,7 +267,7 @@ But, for `no-unsafe-eval`, we would ask to expose first-class `import` on all gl
 ```js
 globalThis.import(source);
 // to be equivalent to
-globalThis.eval('s => import(s)')(source);
+globalThis.eval("s => import(s)")(source);
 ```
 
 ---
@@ -275,7 +275,6 @@ globalThis.eval('s => import(s)')(source);
 ### new Global and Module Harmony ✨
 
 ---
-
 
 #### Import hook in Global
 
@@ -337,5 +336,29 @@ const source = new ModuleSource(
     },
   }
 );
-await newGlobal.eval('s => import(s)')(source);
+await newGlobal.eval("s => import(s)")(source);
 ```
+
+<!-- visual customizations -->
+
+<style>
+/* justify, unless it's just one line (first===last) */
+p {
+  text-align: justify;
+  text-align-last: center;
+}
+blockquote {
+  border-left: 4px solid #888;
+  padding-left: 1em;
+  quotes: none;
+  text-align: justify;
+}
+blockquote * {
+  text-align: justify;
+  text-align-last: left;
+}
+blockquote::before,
+blockquote::after {
+  content: none;
+}
+</style>
