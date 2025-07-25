@@ -197,14 +197,14 @@ TC53][tc53], do not have an origin on which to build a same-origin-policy, and
 have elected to build their security model on isolated evaluators, through the
 high-level Compartment interface.
 
-### Isolating unreliable code
+### Isolating/encapsulating unreliable code
 
 The way modern software is composed has already undermined the validity of the assumption that every author participating has their intentions well aligned for the benefit of the software working correctly. A whole new level of unreliability is now added with the popularity of _coding agents_ and _vibe coding_ where creating syntactically valid but effectively unpredictable JavaScript and integrating it into existing software to check whether it seems to implement the desired functionality is becoming a popular way of building software.
 
 It is not an entirely new concern, as test runners have been concerned with isolating test cases to avoid them relying on global side-effects of other test cases. It is now a concern for a much wider audience with more at stake.
 
 With `Global` constructor comes the ability to isolate fragments of the application in a way that unreliable code cannot rely on shared global state without the maintainer of the software knowing about it.
-AI generated sources from independently working agents can come with colliding names for global variables to use and may need separate global scopes to collaborate or coexist. Similarly a misguided attempt at an inline polyfill by an AI or a package author could be prevented by freezing the contents of a new global in which the unreliable code subsequently runs.
+AI generated sources from independently working agents can come with colliding names for global variables to use and may need separate global scopes to collaborate or coexist. Similarly a misguided attempt at an inline polyfill by an AI or a package author could be prevented by freezing the parts of the new global in which the unreliable code subsequently runs.
 Using a new global instead of a new Realm avoids the issues like identity discontinuity impeding the composition of software where function calls need to happen across the isolated and non-isolated code.
 
 The isolation use case depends also on the interaction with `importHook` and `ModuleSource` as described in 
@@ -241,12 +241,45 @@ see https://github.com/tc39/proposal-get-intrinsic
 
 A `new Global` object would need to be the source for `Reflect.getIntrinsic` to get the correct evaluators (including `%AsyncFunction%` etc.) from the internal slots and preserve the limited scope of the _global_ if `keys` were set.
 
+`Reflect` would need to be unique own property of a new _global_
+
 ## Design Questions
 
 ### Prototype chain in the browser
 
 `globalThis` in the browser has a non-trivial prototype chain for some Window
 API functionality and events.
+
+```js
+let pro = globalThis; 
+while (pro = Object.getPrototypeOf(pro)) { 
+  console.log(pro.toString())
+}
+```
+```
+// browsers
+[object Window]
+[object WindowProperties]
+[object EventTarget]
+[object Object]
+```
+```
+// Node.js
+[object Object]
+[object Object]
+```
+```
+// Deno
+[object Window]
+[object EventTarget]
+[object Object]
+```
+```
+// Hermes
+[object Object]
+undefined
+```
+
 
 ### Backward compatibility and the `constructor` field on a global
 
