@@ -202,6 +202,8 @@ newGlobal.Object === globalThis.Object;
 newGlobal.x === globalThis.x;
 ```
 
+> non-configurable properties would need to become configurable on the copy for some use cases
+
 ---
 
 #### Details - Properties can be selectively grafted
@@ -338,6 +340,10 @@ const source = new ModuleSource(
 );
 await newGlobal.eval("s => import(s)")(source);
 ```
+---
+
+To apply isolation in bundles resulting from running a build process, while under CSP with no `unsafe-eval` we may need to rely on [Module Declarations](https://github.com/tc39/proposal-module-declarations) producing an instance or a `ModuleSource` whose import via an importHook by the new global would not be considered an evaluation but a same-origin import. 
+---
 
 <!-- visual customizations -->
 
