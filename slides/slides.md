@@ -20,26 +20,37 @@ Minimal addition to the spec sufficient for implementing various ideas around li
 
 ---
 
-## Differences with other approaches
-
-_Compared to Shadow Realm or exposing an Isolate factory_
-
-<!-- - not introducing a new category of a global object, but allowing replicating the existing one -->
-
-- minimize intersection with the web standards
-- enables isolation that doesn't undermine synchronous communication and shared prototypes
-- avoids adding new concepts, reuses existing `Global` concept, allows replicas.
-- while use cases may seem similar, this proposal being same-realm and avoiding duplicating large objects should allow more granular isolation/encapsulation
-
----
-
 ## Motivation
 
 - Domain Specific Languages
 - Test runners
+- Shim builtin modules
 - Principle of Least Authority (Compartment)
 - Emulating another host
 - Isolation of unreliable code (AI)
+
+---
+
+## Tentative design
+
+```js
+const newGlobal = new globalThis.Global();
+```
+
+Introduce a level of indirection between _Execution Context_ and _Realm_ called _Global_ that intercepts or relieves the _Realm_ of its [[GlobalObject]], [[TemplateMap]], and [[LoadedModules]] such that multiple _Globals_ can share a realm and _most_ of their [[Intrinsics]].
+
+_This is the only remaining language mechanism necessary to isolate scripts and ESM, with the assistance of JavaScript user code._
+
+---
+
+## Differences with other approaches
+
+_Compared to Shadow Realm or exposing an Isolate factory_
+
+- minimize intersection with the web standards
+- enables isolation that doesn't undermine synchronous communication and shared prototypes
+- avoids introducing a new kind of global object, instead enabling the creation of shallow copies
+- while use cases may seem similar, this proposal being same-realm and avoiding duplicating large objects should allow finer-grain isolation/encapsulation
 
 ---
 
@@ -156,9 +167,9 @@ We are bringing up the details for feedback
 
 ### Details
 
-- allows mutating `(new Global()).globalThis` before evaluation
+- allows mutating `new globalThis.Global()` before evaluation
 - by default copy all properties from `globalThis`
-- properties: `Global` and all evaluators have their internal slots relating them to the new _global_, that includes all `*Function` slots.
+- properties: `Global` and all evaluators have their internal slots relating them to the new _global_, that includes all [[\*Function]] slots.
 
 ```js
 Reflect.getIntrinsic("%AsyncFunction%") !==
@@ -249,9 +260,15 @@ fs1 === fs2; // if present
 
 ### Intersection semantics with Content Security Policy
 
-They have been resolved by ESM source phase imports proposal with `ModuleSource`.
+Globals do not alter any of the mechanism established by ESM Source Phase Imports (Stage 2.7), which enables web hosts to deny evaluation of module sources.
 
-<!-- TODO: reveal dynamic import making ModuleSource usable within a new Global without `unsafe-eval`, preferably by global.import -->
+But, for `no-unsafe-eval`, we would ask to expose first-class `import` on all global objects.
+
+```js
+globalThis.import(source);
+// to be equivalent to
+globalThis.eval('s => import(s)')(source);
+```
 
 ---
 
@@ -279,14 +296,34 @@ const fs = await newGlobal.eval('import("node:fs"))');
 
 ---
 
+#### Import hook on ModuleSource
+
 ```js
-const globalThat = new Global({
+const source = new ModuleSource(`
+  import "node:fs";
+`, {
+  importHook(specifier, attributes) {
+    const specifier = new URL(importSpecifier, this.url).href;
+    return import.source(specifier);
+    // or
+    return import(specifier);
+    // or
+    return new ModuleSource('');
+  },
+  url: import.meta.url;
+});
+```
+
+---
+
+```js
+const newGlobal = new Global({
   importHook(specifier) {
     log(`global ${specifier}`);
     return new ModuleSource("");
   },
 });
-const source = new globalThat.ModuleSource(
+const source = new ModuleSource(
   `
   import 'static-import';                             // local static-import
   eval('import("direct-eval-import")');               // local direct-eval-import
@@ -296,8 +333,9 @@ const source = new globalThat.ModuleSource(
   {
     importHook(specifier) {
       log(`local ${specifier}`);
+      return new ModuleSource("");
     },
   }
 );
-await import(source);
+await newGlobal.eval('s => import(s)')(source);
 ```
