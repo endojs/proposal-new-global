@@ -45,8 +45,8 @@ interface Global {
   Global: typeof Global,
   eval: typeof eval,
   Function: typeof Function,
-  // Consequently, internal slots for 
-  // AsyncFunction , GeneratorFunction,   AsyncGeneratorFunction 
+  // Consequently, internal slots for
+  // AsyncFunction , GeneratorFunction,   AsyncGeneratorFunction
 
   // ... and properties copied from globalThis filtered by keys
 }
@@ -104,29 +104,72 @@ The global does not require a fresh `ModuleSource` because
 the source is paired with the global by use of dynamic `import` in global evaluation,
 as in `new Global().eval('specifier => import(specifier)')(specifier)`.
 
-Invariants:
+### Invariants:
+
+
+
+- By default the new global would get the same prototype as parent
+- The [[Prototype]] **MUST** be settable
+
+```js
+const newGlobal = new Global();
+Object.setPrototypeOf(newGlobal, Object.prototype);
+```
+
+All properties grafted by default
 
 ```js
 globalThis.x = {};
-const newGlobal = new globalThis.Global({
-  keys: Object.keys(globalThis),
+const newGlobal = new globalThis.Global();
+newGlobal.Object === globalThis.Object;
+newGlobal.x === globalThis.x;
+```
+
+Properties can be selectively grafted
+
+```js
+globalThis.x = {};
+globalThis.y = {};
+const newGlobal = new Global({
+  keys: ["y"],
 });
+newGlobal.x === undefined;
+newGlobal.y === globalThis.y;
+newGlobal.Object === undefined;
+```
+
+Own unique evaluators, but shared prototypes
+
+```js
+const newGlobal = new Global();
 newGlobal.eval !== thisGlobal.eval;
 newGlobal.Global !== thisGlobal.Global;
 newGlobal.Function !== thisGlobal.Function;
-newGlobal.eval("Object.getPrototypeOf(async () => {})") !==
-  Object.getPrototypeOf(async () => {});
-newGlobal.eval("Object.getPrototypeOf(function *() {})") !==
-  Object.getPrototypeOf(function* () {});
-newGlobal.eval("Object.getPrototypeOf(async function *() {})") !==
-  Object.getPrototypeOf(async function* () {});
-const source = new ModuleSource("export default {}");
-(await newGlobal.eval("(...args) => import(...args)")(source)) !==
-  (await import(source));
-newGlobal.ModuleSource === thisGlobal.ModuleSource;
-newGlobal.Array === thisGlobal.Array;
-newGlobal.x === thisGlobal.x;
+newGlobal.Function.prototype === thisGlobal.Function.prototype;
 ```
+
+Other unique intrinsic evaluators also share prototypes
+
+```js
+const newGlobal = new Global();
+newGlobal.eval("Object.getPrototypeOf(async () => {})") ===
+  Object.getPrototypeOf(async () => {});
+newGlobal.eval("Object.getPrototypeOf(function *() {})") ===
+  Object.getPrototypeOf(function* () {});
+newGlobal.eval("Object.getPrototypeOf(async function *() {})") ===
+  Object.getPrototypeOf(async function* () {});
+```
+
+Inherits host import hook and module map
+
+```js
+const newGlobal = new Global();
+const fs1 = await import("node:fs");
+const fs2 = await newGlobal.eval('import("node:fs")');
+fs1 === fs2; // if present
+```
+
+---
 
 ## Motivation
 
@@ -207,7 +250,7 @@ With `Global` constructor comes the ability to isolate fragments of the applicat
 AI generated sources from independently working agents can come with colliding names for global variables to use and may need separate global scopes to collaborate or coexist. Similarly a misguided attempt at an inline polyfill by an AI or a package author could be prevented by freezing the parts of the new global in which the unreliable code subsequently runs.
 Using a new global instead of a new Realm avoids the issues like identity discontinuity impeding the composition of software where function calls need to happen across the isolated and non-isolated code.
 
-The isolation use case depends also on the interaction with `importHook` and `ModuleSource` as described in 
+The isolation use case depends also on the interaction with `importHook` and `ModuleSource` as described in
 
 https://github.com/endojs/proposal-import-hook/?tab=readme-ov-file#new-global
 
@@ -251,8 +294,8 @@ A `new Global` object would need to be the source for `Reflect.getIntrinsic` to 
 API functionality and events.
 
 ```js
-let pro = globalThis; 
-while (pro = Object.getPrototypeOf(pro)) { 
+let pro = globalThis;
+while (pro = Object.getPrototypeOf(pro)) {
   console.log(pro.toString())
 }
 ```
@@ -291,16 +334,18 @@ to invoke it.
 globalThis.constructor === Window;
 const g1 = new Global();
 
-g1.globalThis.constructor === Global; // would need to be true I suppose
+// Which of the following should be true?
+
+g1.globalThis.constructor === Global; // Gets in the way of the web standards potentially
 g1.globalThis.constructor === g1.globalThis.Global; // definitely not
-g1.globalThis.constructor === g1.globalThis.Window; // umm...
-g1.globalThis.Window === Global; // maybe that solves it?
+g1.globalThis.constructor === g1.globalThis.Window; // maybe?
+g1.globalThis.Window === Global; // Would Window no longer be an Illegal constructor?
 ```
 
-Meanwhile in Node.js `globalThis.constructor.name === 'Object'`
 
 [proposal-source-phase-imports]: https://github.com/tc39/proposal-source-phase-imports
 [proposal-esm-phase-imports]: https://github.com/tc39/proposal-esm-phase-imports
 [proposal-compartments]: https://github.com/tc39/proposal-compartments
 [proposal-import-hook]: https://github.com/endojs/proposal-import-hook
 
+````

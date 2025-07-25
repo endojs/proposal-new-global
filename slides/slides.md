@@ -173,7 +173,7 @@ Reflect.getIntrinsic("%AsyncFunction%") !==
 ### Details - prototype
 
 - By default the new global would get the same prototype as parent
-- The [[Prototype]] **MUST** be setable
+- The [[Prototype]] **MUST** be settable
 
 ```js
 const newGlobal = new Global();
