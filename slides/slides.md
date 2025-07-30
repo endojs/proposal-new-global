@@ -9,7 +9,7 @@ paginate: true
 
 #### status update & feedback request
 
-_Zbyszek Tenerowicz (ZTZ) @naugtur.pl_
+_Zbyszek Tenerowicz (ZTZ) @naugtur_
 _Kris Kowal (KKL) @kriskowal_
 
 ---
@@ -25,7 +25,7 @@ Minimal addition to the spec sufficient for implementing various ideas around li
 - Domain Specific Languages
 - Test runners
 - Shim builtin modules
-- Principle of Least Authority (Compartment)
+- Principle of Least Authority (Compartment, LavaMoat)
 - Emulating another host
 - Isolation of unreliable code (AI)
 
@@ -136,6 +136,8 @@ interface Global {
 
   // + properties copied from globalThis filtered by keys
 }
+
+const newGlobal = new globalThis.Global();
 ```
 
 ---
@@ -338,6 +340,17 @@ const source = new ModuleSource(
 );
 await newGlobal.eval("s => import(s)")(source);
 ```
+---
+
+### Summary
+
+Proposal to introduce a `Global` constructor with minimal functionality necessary to decouple the concept of global from Realm. The proposal is the minimal change sufficient to implement isolation, including Compartment, in user code. It replaces the _Evaluators (Stage 1)_ proposal that was earlier extracted from the umbrella Compartment proposal.
+
+We are requesting feedback, especially on minimizing intersections with web standards.
+
+We are requesting Stage 1 for `new Global`.
+
+
 
 <!-- visual customizations -->
 
